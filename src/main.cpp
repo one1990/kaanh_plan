@@ -9,11 +9,11 @@ auto createControllerRokaeXB4()->std::unique_ptr<aris::control::Controller>	/*函
 	std::unique_ptr<aris::control::Controller> controller(new aris::control::EthercatController);/*创建std::unique_ptr实例*/
 
 	std::string xml_str =
-		"<m_servo_press type=\"EthercatMotion\" phy_id=\"0\" product_code=\"0x60380007\""
+        "<m_servo_press type=\"EthercatMotion\" phy_id=\"0\" product_code=\"0x60380005\""
 		" vendor_id=\"0x0000066F\" revision_num=\"0x00010000\" dc_assign_activate=\"0x0300\""
-		" min_pos=\"0.01\" max_pos=\"0.26\" max_vel=\"0.125\" min_vel=\"-0.125\""
+        " min_pos=\"-0.1\" max_pos=\"0.15\" max_vel=\"0.2\" min_vel=\"-0.2\""
 		" max_acc=\"2.0\" min_acc=\"-2.0\" max_pos_following_error=\"0.005\" max_vel_following_error=\"0.005\""
-		" home_pos=\"0\" pos_factor=\"-3355443200\" pos_offset=\"0.0\">"
+        " home_pos=\"0\" pos_factor=\"2097152000\" pos_offset=\"0.00383346\">"
 		"	<sm_pool type=\"SyncManagerPoolObject\">"
 		"		<sm type=\"SyncManager\" is_tx=\"false\"/>"
 		"		<sm type=\"SyncManager\" is_tx=\"true\"/>"
@@ -44,11 +44,11 @@ auto createControllerRokaeXB4()->std::unique_ptr<aris::control::Controller>	/*函
 	controller->slavePool().add<aris::control::EthercatMotion>().loadXmlStr(xml_str);
 
 	std::string xml_str1 =
-		"<m_servo_press type=\"EthercatMotion\" phy_id=\"1\" product_code=\"0x60380007\""
-		" vendor_id=\"0x0000066F\" revision_num=\"0x00010000\" dc_assign_activate=\"0x0300\""
-		" min_pos=\"0.01\" max_pos=\"0.26\" max_vel=\"0.125\" min_vel=\"-0.125\""
-		" max_acc=\"2.0\" min_acc=\"-2.0\" max_pos_following_error=\"0.005\" max_vel_following_error=\"0.005\""
-		" home_pos=\"0\" pos_factor=\"-3355443200\" pos_offset=\"0.0\">"
+        "<m_servo_press type=\"EthercatMotion\" phy_id=\"1\" product_code=\"0x60380005\""
+        " vendor_id=\"0x0000066F\" revision_num=\"0x00010000\" dc_assign_activate=\"0x0300\""
+        " min_pos=\"-0.1\" max_pos=\"0.15\" max_vel=\"0.2\" min_vel=\"-0.2\""
+        " max_acc=\"2.0\" min_acc=\"-2.0\" max_pos_following_error=\"0.005\" max_vel_following_error=\"0.005\""
+        " home_pos=\"0\" pos_factor=\"2097152000\" pos_offset=\"0.0032925\">"
 		"	<sm_pool type=\"SyncManagerPoolObject\">"
 		"		<sm type=\"SyncManager\" is_tx=\"false\"/>"
 		"		<sm type=\"SyncManager\" is_tx=\"true\"/>"
@@ -87,6 +87,7 @@ struct MoveJSParam
 {
 	int total_time;
 	int left_time;
+    double step_size;//
 };
 
 class MoveJS : public aris::plan::Plan
@@ -94,15 +95,22 @@ class MoveJS : public aris::plan::Plan
 public:
 	auto virtual prepairNrt(const std::map<std::string, std::string> &params, PlanTarget &target)->void
 	{
-		MoveJSParam p;
+        MoveJSParam p;
 		p.total_time = std::stoi(params.at("total_time"));
+        p.step_size=std::stod(params.at("step_size"));//
 		p.left_time = 0;
 		target.param = p;
-		target.option |= USE_TARGET_POS;
+        target.option =
+                aris::plan::Plan::NOT_CHECK_POS_CONTINUOUS_SECOND_ORDER |
+                aris::plan::Plan::NOT_CHECK_POS_CONTINUOUS_SECOND_ORDER_AT_START |
+                aris::plan::Plan::NOT_CHECK_POS_FOLLOWING_ERROR |
+                aris::plan::Plan::NOT_CHECK_VEL_FOLLOWING_ERROR |
+                aris::plan::Plan::NOT_CHECK_VEL_CONTINUOUS_AT_START |
+                aris::plan::Plan::NOT_CHECK_VEL_CONTINUOUS;
 	}
 	auto virtual executeRT(PlanTarget &target)->int
 	{
-		MoveJSParam param = std::any_cast<MoveJSParam>(target.param);
+        /*MoveJSParam param = std::any_cast<MoveJSParam>(target.param);
 		static double begin_pe[6]{ 0,0,0,0,0,0 };
 		if (target.count == 1)
 		{
@@ -113,16 +121,42 @@ public:
 		pe[0] = begin_pe[0] + 0.05*(1 - std::cos(1.0*target.count / param.total_time * 2 * aris::PI));
 		target.model->generalMotionPool()[0].setMpe(pe, "321");
 		target.model->solverPool()[0].kinPos();
-		if (target.count % 100 == 0)aris::dynamic::dsp(1, 6, pe);
-		return param.total_time - target.count;
+        if (target.count % 100 == 0)aris::dynamic::dsp(1, 6, pe);*/
+        //return param.total_time - target.count;
+
+        auto controller = dynamic_cast<aris::control::EthercatController *>(target.master);
+        auto &p = std::any_cast<MoveJSParam&>(target.param);
+
+        //p.total_time
+
+        static double beginpos[2];
+        if(target.count == 1)
+        {
+            target.master->mout()<<"mot1:" << controller->motionPool()[0].actualPos()<<std::endl;
+            target.master->mout()<<"mot2:" << controller->motionPool()[1].actualPos()<<std::endl;
+
+            beginpos[0] = controller->motionPool()[0].actualPos();
+            beginpos[1] = controller->motionPool()[1].actualPos();
+        }
+//0.01/p.total_time * target.count);
+        controller->motionPool()[0].setTargetPos(beginpos[0] - p.step_size*(1 - std::cos(1.0*target.count / p.total_time * 2 * aris::PI))) ; //0.01
+        controller->motionPool()[1].setTargetPos(beginpos[1] - p.step_size*(1 - std::cos(1.0*target.count / p.total_time * 2 * aris::PI))) ;
+
+
+
+
+        return p.total_time - target.count;
 	}
 	auto virtual collectNrt(PlanTarget &target)->void {}
-	explicit MoveJS(const std::string &name = "myplan") :Plan(name)
+    explicit MoveJS(const std::string &name = "myplan"):Plan(name)
 	{
 		command().loadXmlStr(
 			"<myplan>"
-			"	<total_time type=\"Param\" default=\"209105216\"/>" //默认5000
-			"</myplan>");
+            "	<group type=\"GroupParam\">"
+            "	    <total_time type=\"Param\" default=\"5000\"/>" //默认5000
+            "       <step_size type=\"Param\" default=\"0.045\"/>"
+            "   </group>"
+            "</myplan>");
 	}
 };
 
@@ -156,12 +190,22 @@ auto createPlanRootRokaeXB4()->std::unique_ptr<aris::plan::PlanRoot>
 
 int main(int argc, char *argv[])
 {
-	auto&cs = aris::server::ControlServer::instance();
-	//cs.resetController(aris::robot::createControllerRokaeXB4().release());
+    aris::control::EthercatMaster mst;
+    mst.scan();
+    std::cout<<mst.xmlString()<<std::endl;
+
+    auto&cs = aris::server::ControlServer::instance();
+
+
+
+    cs.resetController(createControllerRokaeXB4().release());
 	//cs.resetModel(aris::robot::createModelRokaeXB4().release());
-	//cs.resetPlanRoot(aris::robot::createPlanRootRokaeXB4().release());
-	cs.planRoot().planPool().add<MoveJS>();
-	cs.planRoot().planPool().add<MoveJS>();
+    cs.resetPlanRoot(createPlanRootRokaeXB4().release());
+    //cs.planRoot().planPool().add<MoveJS>();
+    //cs.planRoot().planPool().add<MoveJS>();
+
+    std::cout<<"start"<<std::endl;
+
 	cs.start();
 	//等待查询
 	for (std::string command_in; std::getline(std::cin, command_in);)
