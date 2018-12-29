@@ -203,7 +203,6 @@ int main(int argc, char *argv[])
     cs.resetPlanRoot(createPlanRootRokaeXB4().release());
     //cs.planRoot().planPool().add<MoveJS>();
     //cs.planRoot().planPool().add<MoveJS>();
-
     std::cout<<"start"<<std::endl;
 
 	cs.start();

@@ -19,3 +19,12 @@ include_directories(${aris_INCLUDE_DIRS})
 set(SOURCE_FILES src/main.cpp)
 add_executable(myplan ${SOURCE_FILES})
 target_link_libraries(myplan ${aris_LIBRARIES})
+
+# user program started...
+set(SOURCE_FILES	src/rokae/main.cpp 
+					src/rokae/rokae.cpp 
+					src/rokae/rokae.h 
+					src/rokae/plan.cpp 
+					src/rokae/plan.h)
+add_executable(rokae ${SOURCE_FILES})
+target_link_libraries(rokae ${aris_LIBRARIES})
