@@ -34,20 +34,20 @@ public:
 		auto controller = dynamic_cast<aris::control::EthercatController *>(target.master);
 		auto &p = std::any_cast<MoveJSParam&>(target.param);
 
-		static double beginpos[2];
+		static double beginpos[6] = { 0, 0, 0, 0, 0, 0 };
 		if (target.count == 1)
 		{
-			target.master->mout() << "mot1:" << controller->motionPool()[0].actualPos() << std::endl;
-			target.master->mout() << "mot2:" << controller->motionPool()[1].actualPos() << std::endl;
+			target.master->mout() << "mot1:" << controller->motionPool()[5].actualPos() << std::endl;
+			//target.master->mout() << "mot2:" << controller->motionPool()[1].actualPos() << std::endl;
 
-			beginpos[0] = controller->motionPool()[0].actualPos();
-			beginpos[1] = controller->motionPool()[1].actualPos();
+			beginpos[5] = controller->motionPool()[5].actualPos();
+			//beginpos[1] = controller->motionPool()[1].actualPos();
 		}
 
 
-
-		controller->motionPool()[0].setTargetPos(beginpos[0] + p.step_size*(1 - std::cos(1.0*target.count / p.total_time * 2 * aris::PI))); //0.01
-		controller->motionPool()[1].setTargetPos(beginpos[1] + p.step_size*(1 - std::cos(1.0*target.count / p.total_time * 2 * aris::PI)));
+		controller->motionPool()[5].setTargetPos(beginpos[5] + p.step_size*(1 - std::cos(1.0*target.count / p.total_time * 1 * aris::PI))); //0.01
+		//controller->motionPool()[0].setTargetPos(beginpos[0] + p.step_size*(1 - std::cos(1.0*target.count / p.total_time * 2 * aris::PI))); //0.01
+		//controller->motionPool()[1].setTargetPos(beginpos[1] + p.step_size*(1 - std::cos(1.0*target.count / p.total_time * 2 * aris::PI)));
 
 		return p.total_time - target.count;
 	}
