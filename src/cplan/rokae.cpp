@@ -1,7 +1,6 @@
 #include <algorithm>
 #include"rokae.h"
 #include "plan.h"
-#include "cplan.h"
 
 using namespace aris;
 using namespace aris::dynamic;
@@ -186,7 +185,6 @@ namespace rokae
 		plan_root->planPool().add<aris::plan::MoveJ>();
 		plan_root->planPool().add<aris::plan::Show>();
 		plan_root->planPool().add<MoveJS>();//添加的是一个类
-		plan_root->planPool().add<MoveCircle>();
 		return plan_root;
 	}
 }
