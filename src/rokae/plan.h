@@ -58,13 +58,10 @@ public:
 			"<myplan>"
 			"	<group type=\"GroupParam\">"
 			"	    <total_time type=\"Param\" default=\"5000\"/>" //д╛хо5000
-			"       <step_size type=\"Param\" default=\"0.045\"/>"
+            "       <step_size type=\"Param\" default=\"0.1\"/>"
 			"   </group>"
 			"</myplan>");
 	}
 };
-
-
-
 
 #endif

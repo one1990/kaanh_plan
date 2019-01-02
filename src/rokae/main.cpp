@@ -6,7 +6,7 @@ int main(int argc, char *argv[])
 	auto&cs = aris::server::ControlServer::instance();
 
 	cs.resetController(rokae::createControllerRokaeXB4().release());
-	cs.resetModel(rokae::createModelRokaeXB4().release());
+    cs.resetModel(aris::dynamic::createModelRokaeXB4().release());
 	cs.resetPlanRoot(rokae::createPlanRootRokaeXB4().release());
 
 	std::cout << "start" << std::endl;
@@ -26,6 +26,4 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	char ch;
-	std::cin >> ch;
 }
