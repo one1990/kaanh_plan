@@ -12,13 +12,14 @@ struct MoveCParam
 	//double step_size;定义步长参数
 	double radius; //圆形规划半径
 	double detal;//圆弧轨迹增量
+    double theta;
 };
 class MoveCircle : public aris::plan::Plan
 {
 public:
 	auto virtual prepairNrt(const std::map<std::string, std::string> &params, PlanTarget &target)->void
 	{
-		MoveCParam p;
+        MoveCParam p;
 		p.total_time = std::stoi(params.at("total_time"));
 		//p.step_size = std::stod(params.at("step_size"));
 		p.radius = std::stod(params.at("radius"));
@@ -40,19 +41,7 @@ public:
 		auto controller = dynamic_cast<aris::control::EthercatController *>(target.master);
 		auto &p = std::any_cast<MoveCParam&>(target.param);
 
-		//static double beginpos[6] = { 0, 0, 0, 0, 0, 0 };
-		//if (target.count == 1)
-		//{
-		//	target.master->mout() << "mot1:" << controller->motionPool()[5].actualPos() << std::endl;
-		//	//target.master->mout() << "mot2:" << controller->motionPool()[1].actualPos() << std::endl;
 
-		//	beginpos[5] = controller->motionPool()[5].actualPos();
-		//	//beginpos[1] = controller->motionPool()[1].actualPos();
-
-		//	//double pq[7]{ 0,0,0,0,0,0,1 };
-
-		//	
-		//}
 
 		static double beginpq[7];
 		if (target.count == 1)
@@ -65,14 +54,19 @@ public:
 		//将获取的机器人位置赋值给变量
 		std::copy_n(beginpq, 7, pq);
 		//对变量的第一个参数进行运动规划
-        //pq[1] = beginpq[1] + p.radius*(std::cos(-aris::PI/2+1.0*target.count / p.total_time * 5 * 2 * aris::PI)) + p.detal * target.count;//Y轴，水平轴,走完5个圆
+        //theta = target.count / p.total_time - 1/ p.total_time;
+
+        double theta = 1.0*(1 - std::cos(1.0*target.count / p.total_time * 1 * aris::PI));
+
+        pq[1] = beginpq[1] + p.radius*(std::cos(-aris::PI/2+1.0* theta * 5 * 2 * aris::PI)) + p.detal * theta * 5000;//Y轴，水平轴,走完5个圆
         //pq[2] = beginpq[2] + p.radius*(std::sin(-aris::PI/2+1.0*target.count / p.total_time * 5 * 2 * aris::PI)) + p.radius;//Z轴竖直轴
-        pq[2] = beginpq[2] + p.radius*(std::sin(-aris::PI/2+1.0*target.count / p.total_time * 5 * 2 * aris::PI)) + p.radius;//Z轴竖直轴
+        pq[2] = beginpq[2] + p.radius*(std::sin(-aris::PI/2+1.0*theta * 5 * 2 * aris::PI)) + p.radius;//Z轴竖直轴
 
         if(target.count %500 ==0)target.master->mout()<< pq[1] <<"  "<<pq[2]<< std::endl;
 
 
-
+//controller->mout();
+//controller->lout()<< ;
 
         //pq[2] = beginpq[2] + p.step_size*(1 - std::cos(1.0*target.count / p.total_time * 1 * aris::PI));
 		//将变量的值赋值给model中模型的末端位置
