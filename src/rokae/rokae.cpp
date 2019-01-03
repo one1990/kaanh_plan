@@ -187,6 +187,7 @@ namespace rokae
 		plan_root->planPool().add<aris::plan::Show>();
 		plan_root->planPool().add<MoveJS>();//添加的是一个类
 		plan_root->planPool().add<MoveCircle>();
+		plan_root->planPool().add<MoveTroute>();
 		return plan_root;
 	}
 }
