@@ -30,3 +30,8 @@ include_directories(${aris_INCLUDE_DIRS})
 set(SOURCE_FILES src/rokae/main.cpp src/rokae/rokae.cpp src/rokae/rokae.h src/rokae/plan.cpp src/rokae/plan.h src/rokae/cplan.cpp src/rokae/cplan.h)
 add_executable(rokae1 ${SOURCE_FILES})
 target_link_libraries(rokae1 ${aris_LIBRARIES})
+
+# user program started...
+set(SOURCE_FILES src/test/main.cpp)
+add_executable(test ${SOURCE_FILES})
+target_link_libraries(test ${aris_LIBRARIES})

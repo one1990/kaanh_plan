@@ -188,6 +188,7 @@ namespace rokae
 		plan_root->planPool().add<MoveJS>();//添加的是一个类
 		plan_root->planPool().add<MoveCircle>();
 		plan_root->planPool().add<MoveTroute>();
+		plan_root->planPool().add<MoveFile>();
 		return plan_root;
 	}
 }
