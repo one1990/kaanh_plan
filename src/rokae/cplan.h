@@ -5,9 +5,11 @@
 #include <iostream>
 #include <fstream>
 #include <typeinfo>
+#include <vector>
 using namespace std;
 using namespace aris::plan;
 
+/// \brief 
 struct MoveCParam
 {
 	int total_time;
@@ -158,89 +160,133 @@ public:
 
 
 
-
-
-
-//读取文件的位置信息
+/// \brief 结构体申明
+///结构体MoveFileParam， 用于读取.txt文件的点位置信息，并控制机器人按照文件中的位置运动
 struct MoveFileParam
 {
 	int total_time;
-	int m, n;
+	int m, n=72;  // m,n代表txt文档中数据的行数和列数
+	double vel;
+	double acc;
+	double dec;// v0是梯形轨迹最终速度
+	double pt;
 };
+//vector<vector<double>  > POS(72, std::vector<double>(700, 0.0));
+/// 申明二维数组用于存储文件中的位置信息
+vector<vector<double>  > POS(4);
+//static double POS[59815][72];
+//static double P1[59815];
+//vector <double> P1;
 
-static double POS[59815][72];
-static double P1[59815];
+/// \brief 类MoveFile申明
+/// 在类MoveFile中,完成对现有的.txt文件中的位置数据的提取，通过程序控制机器人的各关节按照数据位置变化来运动
+/// ### 类MoveFile
+/// + 实时核的准备函数prepairNrt
+/// + 实时核函数executeRT
+/// + 类构造函数MoveFile实时读取xml文件信息
 class MoveFile : public aris::plan::Plan
 {
 public:
+	/// \brief 实时核的准备函数prepairNrt
+	/// @param &params 头文件std中的类map，键的类型是string，值的类型也是string
+	/// @param PlanTarget 命名空间aris::plan中定义的结构体，target是它的引用
+	/// @return 返回值为空
 	auto virtual  prepairNrt(const std::map<std::string, std::string> &params, PlanTarget &target)->void
 	{
 		MoveFileParam p;
 		p.total_time = std::stoi(params.at("total_time"));
-
-		//读取txt文件
-		p.m = 59815;
-		p.n = 72;
-		//n = 18;
-
-		std::fill_n(*POS, 59815 * 72, 0.0);
-
+		p.vel = std::stod(params.at("vel"));
+		p.acc = std::stod(params.at("acc"));
+		p.dec = std::stod(params.at("dec"));
+		p.pt = std::stod(params.at("pt"));
+		// 读取txt文件 
+		p.m = std::stoi(params.at("m")); 
+		p.n = std::stoi(params.at("n"));
+		//std::fill_n(*POS, 59815 * 72, 0.0);
 		ifstream oplog;
-		oplog.open("C:\\Users\\qianch_kaanh_cn\\Desktop\\myplan\\src\\rokae\\rt.txt");
-		for (int i = 0; i < p.m; i++)
+		oplog.open("C:\\Users\\qianch_kaanh_cn\\Desktop\\myplan\\src\\rokae\\rt_log--2019-01-10--14-29-07--5.txt");
+		while (!oplog.eof())
 		{
 			for (int j = 0; j < p.n; j++)
-			{			
-				oplog >> POS[i][j];
-				if (j == 1)
-				{
-					P1[i] = POS[i][j];
+				{				
+					// oplog >> POS[i][j];
+					double data;
+					oplog >> data;
+					POS[j].push_back(data);					
 				}
-			}
-		}
+		}	
 		oplog.close();
-
-			//p.vel = std::stod(params.at("vel"));
 
 		target.param = p;
 		target.option =
 			aris::plan::Plan::USE_TARGET_POS |
 			aris::plan::Plan::NOT_CHECK_VEL_FOLLOWING_ERROR |
-			aris::plan::Plan::NOT_CHECK_VEL_CONTINUOUS_AT_START | //开始不检查速度连续
+			aris::plan::Plan::NOT_CHECK_VEL_CONTINUOUS_AT_START | // 开始不检查速度连续 
 			aris::plan::Plan::NOT_CHECK_VEL_CONTINUOUS;
 	}
+	/// \brief 实时核函数executeRT
+	/// @param PlanTarget 命名空间aris::plan中定义的结构体，target是它的引用
+	/// @return 返回值为空
 	auto virtual  executeRT(PlanTarget &target)->int
 	{
 		auto controller = dynamic_cast<aris::control::EthercatController *>(target.master);
 		auto &p = std::any_cast<MoveFileParam&>(target.param);
-
-		double begin_pos = 0.0;//局部变量最好赋一个初始值
+		double ptt, v, a;
+		aris::Size t_count;
+		aris::Size total_count = 1;
+		double begin_pos = 0.0; // 局部变量最好赋一个初始值; 
 		if (target.count == 1)
 		{
 			//target.model->generalMotionPool()[0].getMpq(beginpq);
 			for (int i = 0; i < 6; i++)
 			{
-				begin_pos = controller->motionAtAbs(i).targetPos();//获取6个电机初始位置
+				// 在第一个周期走梯形规划复位 
+				begin_pos = controller->motionAtAbs(i).targetPos();// 获取6个电机初始位置
+				aris::plan::moveAbsolute(target.count, begin_pos, p.pt, p.vel / 1000, p.acc / 1000 / 1000, p.dec / 1000 / 1000, ptt, v, a, t_count);
+				target.model->motionPool().at(i).setMp(ptt);// motionpool驱动器的池子、数组 			
+				// target.model->motionPool().at(5).setMv(v * 1000);
+				total_count = std::max(total_count, t_count);
 			}
 		}
-		//if (target.count % 500 == 0)target.master->mout() << P1[1] << "  " << P1[80] << std::endl;
-
-		target.model->motionPool().at(5).setMp(P1[target.count]);//motionpool驱动器的池子、数组
-		//target.model->motionPool().at(5).setMv(p.POS[;][63])
+		if (target.count % 500 == 0)
+		{
+			target.master->mout() << "POS[1].size()" << POS[0][0] << " " <<POS[0][1] << " " <<POS[0][2] << " " << POS[0][3] << "POS.size()" <<POS[0].size()<< std::endl;
+			//target.master->mout() << "POS[1].size()"<<POS[0].size() << " "<<POS.size() << "  POS[1].size()  " << std::endl;
+		}
+		//target.master->mout() << POS[0][target.count] << std::endl;
+		target.model->motionPool().at(5).setMp(POS[1][target.count]);// motionpool驱动器的池子、数组
+		//target.model-`>motionPool().at(5).setMv(p.POS[;][63])
 		//target.model->motionPool().at(5).setMv(v * 1000);
 		//total_count = std::max(total_count, t_count);
+		//输出log位置文件
+
+		/*auto &cout = controller->mout();
+		for (int i = 0; i < POS[0].size(); i++)
+		{
+			cout << POS[0][i] << ",";			
+		}*/
 
 
 		//if (target.model->solverPool()[0].kinPos() == 0 && target.count % 500 == 0)target.master->mout() << "kin failed" << std::endl;
 
+
+
 		return p.total_time - target.count;
 	}
+	/// + 类构造函数MoveFile实时读取xml文件信息
+	/// 
 	explicit MoveFile(const std::string &name = "MoveFile") :Plan(name)
 	{
 		command().loadXmlStr(
 			"<mvFi>"
 			"	<group type=\"GroupParam\" default_child_type=\"Param\">"
-			"	    <total_time type=\"Param\" default=\"5000\"/>" //默认5000
+			"	    <total_time type=\"Param\" default=\"5000\"/>" // 默认5000 			
+			"		<m type=\"Param\" default=\"59815\"/>"  // 行数 
+			"		<n type=\"Param\" default=\"4\"/>"
+			"		<vel type=\"Param\" default=\"0.04\"/>"
+			"		<acc type=\"Param\" default=\"0.08\"/>"
+			"		<dec type=\"Param\" default=\"0.08\"/>"
+			"		<pt type=\"Param\" default=\"0.0\"/>"
 			"	</group>"
 			"</mvFi>");		
 	}
