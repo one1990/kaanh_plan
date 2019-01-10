@@ -173,7 +173,7 @@ struct MoveFileParam
 };
 //vector<vector<double>  > POS(72, std::vector<double>(700, 0.0));
 /// 申明二维数组用于存储文件中的位置信息
-vector<vector<double>  > POS(4);
+vector<vector<double>  > POS(18);
 //static double POS[59815][72];
 //static double P1[59815];
 //vector <double> P1;
@@ -204,7 +204,7 @@ public:
 		p.n = std::stoi(params.at("n"));
 		//std::fill_n(*POS, 59815 * 72, 0.0);
 		ifstream oplog;
-		oplog.open("C:\\Users\\qianch_kaanh_cn\\Desktop\\myplan\\src\\rokae\\rt_log--2019-01-10--14-29-07--5.txt");
+		oplog.open("C:\\Users\\qianch_kaanh_cn\\Desktop\\myplan\\src\\rokae\\rt_log--2019-01-10--14-29-07--5--1.txt");
 		while (!oplog.eof())
 		{
 			for (int j = 0; j < p.n; j++)
@@ -234,23 +234,30 @@ public:
 		double ptt, v, a;
 		aris::Size t_count;
 		aris::Size total_count = 1;
-		double begin_pos = 0.0; // 局部变量最好赋一个初始值; 
+		double begin_pos[6] = { 0.0,0.0,0.0,0.0,0.0,0.0 }; // 局部变量最好赋一个初始值; 
 		if (target.count == 1)
 		{
 			//target.model->generalMotionPool()[0].getMpq(beginpq);
 			for (int i = 0; i < 6; i++)
 			{
-				// 在第一个周期走梯形规划复位 
-				begin_pos = controller->motionAtAbs(i).targetPos();// 获取6个电机初始位置
-				aris::plan::moveAbsolute(target.count, begin_pos, p.pt, p.vel / 1000, p.acc / 1000 / 1000, p.dec / 1000 / 1000, ptt, v, a, t_count);
-				target.model->motionPool().at(i).setMp(ptt);// motionpool驱动器的池子、数组 			
-				// target.model->motionPool().at(5).setMv(v * 1000);
-				total_count = std::max(total_count, t_count);
+				// 在第一个周期走梯形规划复位 	
+				begin_pos[i] = controller->motionAtAbs(i).targetPos();// 获取6个电机初始位置
 			}
 		}
+
+		for (int i = 0; i < 6; i++)
+		{
+			// 在第一个周期走梯形规划复位 
+			aris::plan::moveAbsolute(target.count, begin_pos[i], p.pt, p.vel / 1000, p.acc / 1000 / 1000, p.dec / 1000 / 1000, ptt, v, a, t_count);
+			target.model->motionPool().at(i).setMp(ptt);// motionpool驱动器的池子、数组 			
+			// target.model->motionPool().at(5).setMv(v * 1000);
+			total_count = std::max(total_count, t_count);
+		}
+
+
 		if (target.count % 500 == 0)
 		{
-			target.master->mout() << "POS[1].size()" << POS[0][0] << " " <<POS[0][1] << " " <<POS[0][2] << " " << POS[0][3] << "POS.size()" <<POS[0].size()<< std::endl;
+			target.master->mout() << "POS[1].size()" << POS[0][0] << " " <<POS[0][1] << " " <<POS[0][2] << " " << POS[0][3] << "POS.size()" <<POS[0].size()<< " " << POS[1][POS[1].size()] << std::endl;
 			//target.master->mout() << "POS[1].size()"<<POS[0].size() << " "<<POS.size() << "  POS[1].size()  " << std::endl;
 		}
 		//target.master->mout() << POS[0][target.count] << std::endl;
@@ -271,7 +278,7 @@ public:
 
 
 
-		return p.total_time - target.count;
+		return total_count - target.count;
 	}
 	/// + 类构造函数MoveFile实时读取xml文件信息
 	/// 
@@ -282,7 +289,7 @@ public:
 			"	<group type=\"GroupParam\" default_child_type=\"Param\">"
 			"	    <total_time type=\"Param\" default=\"5000\"/>" // 默认5000 			
 			"		<m type=\"Param\" default=\"59815\"/>"  // 行数 
-			"		<n type=\"Param\" default=\"4\"/>"
+			"		<n type=\"Param\" default=\"18\"/>"
 			"		<vel type=\"Param\" default=\"0.04\"/>"
 			"		<acc type=\"Param\" default=\"0.08\"/>"
 			"		<dec type=\"Param\" default=\"0.08\"/>"
