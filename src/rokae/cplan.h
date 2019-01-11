@@ -165,11 +165,12 @@ public:
 struct MoveFileParam
 {
 	int total_time;
-	int m, n=72;  // m,n代表txt文档中数据的行数和列数
+	int m, n;  // m,n代表txt文档中数据的行数和列数
 	double vel;
 	double acc;
 	double dec;// v0是梯形轨迹最终速度
-	double pt;
+	vector<double> pt;
+	int choose;
 };
 //vector<vector<double>  > POS(72, std::vector<double>(700, 0.0));
 /// 申明二维数组用于存储文件中的位置信息
@@ -198,7 +199,10 @@ public:
 		p.vel = std::stod(params.at("vel"));
 		p.acc = std::stod(params.at("acc"));
 		p.dec = std::stod(params.at("dec"));
-		p.pt = std::stod(params.at("pt"));
+		p.choose= std::stoi(params.at("choose"));
+		aris::core::Matrix mat = target.model->calculator().calculateExpression(params.at("pt"));
+		p.pt.resize(mat.size());
+		std::copy(mat.begin(), mat.end(), p.pt.begin());//begin和end都是标准的vector的迭代器
 		// 读取txt文件 
 		p.m = std::stoi(params.at("m")); 
 		p.n = std::stoi(params.at("n"));
@@ -244,33 +248,56 @@ public:
 				begin_pos[i] = controller->motionAtAbs(i).targetPos();// 获取6个电机初始位置
 			}
 		}
-
-		for (int i = 0; i < 6; i++)
+		if (p.choose == 0)
 		{
-			// 在第一个周期走梯形规划复位 
-			aris::plan::moveAbsolute(target.count, begin_pos[i], p.pt, p.vel / 1000, p.acc / 1000 / 1000, p.dec / 1000 / 1000, ptt, v, a, t_count);
-			target.model->motionPool().at(i).setMp(ptt);// motionpool驱动器的池子、数组 			
-			// target.model->motionPool().at(5).setMv(v * 1000);
-			total_count = std::max(total_count, t_count);
+			for (int i = 0; i < 6; i++)
+			{
+				// 在第一个周期走梯形规划复位 
+				aris::plan::moveAbsolute(target.count, begin_pos[i], p.pt[i], p.vel / 1000, p.acc / 1000 / 1000, p.dec / 1000 / 1000, ptt, v, a, t_count);
+				target.model->motionPool().at(i).setMp(ptt);// motionpool驱动器的池子、数组 			
+				// target.model->motionPool().at(5).setMv(v * 1000);
+				total_count = std::max(total_count, t_count);
+			}
+		}
+		else if(p.choose ==1)
+		{
+			//target.master->mout() << POS[0][target.count] << std::endl;
+			target.model->motionPool().at(0).setMp(POS[0][target.count]);// motionpool驱动器的池子、数组
+			target.model->motionPool().at(1).setMp(POS[3][target.count]);
+			target.model->motionPool().at(2).setMp(POS[6][target.count]);
+			target.model->motionPool().at(3).setMp(POS[9][target.count]);
+			target.model->motionPool().at(4).setMp(POS[12][target.count]);
+			target.model->motionPool().at(5).setMp(POS[15][target.count]);
+		}
+		auto &lout = controller->lout();
+		for (int i = 0; i < 6;i++)
+		{
+			lout << POS[3*i][target.count-1] << endl;
 		}
 
+		//for (Size i = 0; i < 6; i++)
+		//{
+		//	lout << controller->motionAtAbs(i).targetPos() << ",";
+		//	lout << controller->motionAtAbs(i).actualPos() << ",";
+		//	lout << controller->motionAtAbs(i).actualVel() << ",";
+		//	lout << controller->motionAtAbs(i).actualCur() << ",";
+		//}
+		//lout << std::endl;
 
 		if (target.count % 500 == 0)
 		{
-			target.master->mout() << "POS[1].size()" << POS[0][0] << " " <<POS[0][1] << " " <<POS[0][2] << " " << POS[0][3] << "POS.size()" <<POS[0].size()<< " " << POS[1][POS[1].size()] << std::endl;
+			target.master->mout() << "POS[1].size()" << POS[0][0] << " " << POS[0][1] << " " << POS[0][2] << " " << POS[0][3] << "POS.size()" << POS[0].size() << " " << POS[1][POS[1].size()-1] << std::endl;
 			//target.master->mout() << "POS[1].size()"<<POS[0].size() << " "<<POS.size() << "  POS[1].size()  " << std::endl;
 		}
-		//target.master->mout() << POS[0][target.count] << std::endl;
-		target.model->motionPool().at(5).setMp(POS[1][target.count]);// motionpool驱动器的池子、数组
 		//target.model-`>motionPool().at(5).setMv(p.POS[;][63])
 		//target.model->motionPool().at(5).setMv(v * 1000);
 		//total_count = std::max(total_count, t_count);
 		//输出log位置文件
 
 		/*auto &cout = controller->mout();
-		for (int i = 0; i < POS[0].size(); i++)
+		for (int i = 0; i < 6; i++)
 		{
-			cout << POS[0][i] << ",";			
+			cout << POS[3*i][count] << ",";			
 		}*/
 
 
@@ -278,7 +305,8 @@ public:
 
 
 
-		return total_count - target.count;
+		//return total_count - target.count;
+		return p.total_time - target.count;
 	}
 	/// + 类构造函数MoveFile实时读取xml文件信息
 	/// 
@@ -293,7 +321,8 @@ public:
 			"		<vel type=\"Param\" default=\"0.04\"/>"
 			"		<acc type=\"Param\" default=\"0.08\"/>"
 			"		<dec type=\"Param\" default=\"0.08\"/>"
-			"		<pt type=\"Param\" default=\"0.0\"/>"
+			"		<choose type=\"Param\" default=\"0\"/>"
+			"		<pt type=\"Param\" default=\"{0,0,0,0,0,0}\"/>"
 			"	</group>"
 			"</mvFi>");		
 	}
