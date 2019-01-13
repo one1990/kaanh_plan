@@ -32,6 +32,6 @@ add_executable(rokae1 ${SOURCE_FILES})
 target_link_libraries(rokae1 ${aris_LIBRARIES})
 
 # user program started...
-set(SOURCE_FILES src/test/main.cpp)
-add_executable(test ${SOURCE_FILES})
-target_link_libraries(test ${aris_LIBRARIES})
+# set(SOURCE_FILES src/test/main.cpp)
+# add_executable(test ${SOURCE_FILES})
+# target_link_libraries(test ${aris_LIBRARIES})
