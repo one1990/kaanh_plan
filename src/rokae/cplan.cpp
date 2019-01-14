@@ -158,6 +158,7 @@ struct MoveFileParam
     double dec;// v0是梯形轨迹最终速度
     vector<double> pt;
     int choose;
+	string file;
 };
 //vector<vector<double>  > POS(72, std::vector<double>(700, 0.0));
 /// 申明二维数组用于存储文件中的位置信息
@@ -183,7 +184,9 @@ auto MoveFile::prepairNrt(const std::map<std::string, std::string> &params, Plan
     p.vel = std::stod(params.at("vel"));
     p.acc = std::stod(params.at("acc"));
     p.dec = std::stod(params.at("dec"));
-    p.choose= std::stoi(params.at("choose"));
+    p.choose = std::stoi(params.at("choose"));
+	p.file = std::any_cast<string>(params.at("file"));
+	//以下三段代码从xml中读取数组pt信息；
     aris::core::Matrix mat = target.model->calculator().calculateExpression(params.at("pt"));
     p.pt.resize(mat.size());
     std::copy(mat.begin(), mat.end(), p.pt.begin());//begin和end都是标准的vector的迭代器
@@ -205,8 +208,17 @@ auto MoveFile::prepairNrt(const std::map<std::string, std::string> &params, Plan
 
     ifstream oplog;
     int cal = 0;
+	
     //oplog.open("C:\\Users\\qianch_kaanh_cn\\Desktop\\myplan\\src\\rokae\\rt_log--2019-01-10--14-29-07--5--1.txt");
-    oplog.open("/home/kaanh/Desktop/myplan/src/rokae/1.txt");
+    //oplog.open("C:/Users/qianch_kaanh_cn/Desktop/myplan/src/rokae/1.txt");
+	string site = "C:/Users/qianch_kaanh_cn/Desktop/myplan/src/rokae/" + p.file;
+	oplog.open(site);
+	//oplog.open(p.file);
+	if (!oplog)
+	{
+		cout << "fail to open the file" << endl;
+		//return -1;//或者抛出异常。
+	}
     while (!oplog.eof())
     {
         for (int j = 0; j < p.n; j++)
@@ -318,7 +330,7 @@ auto MoveFile::executeRT(PlanTarget &target)->int
     {
         for (int i = 0; i < 6;i++)
         {
-            cout <<"size:"<<POS[0].size()<<"    "<<begin_pos[i]<<"    "<< p.pt[i]<< ",  ";
+            cout << "POS[0][0]"<< POS[0][0]<< "    " <<"size:"<<POS[0].size()<<"    "<<begin_pos[i]<<"    "<< p.pt[i]<< ",  ";
         }
          cout << std::endl;
         //target.master->mout() << "POS[1].size()"<<POS[0].size() << " "<<POS.size() << "  POS[1].size()  " << std::endl;
@@ -356,6 +368,7 @@ MoveFile::MoveFile(const std::string &name) :Plan(name)
             "		<dec type=\"Param\" default=\"0.08\"/>"
             "		<choose type=\"Param\" default=\"0\"/>"
             "		<pt type=\"Param\" default=\"{0.0,0.0,0.0,0.0,0.0,0.0}\"/>"
+			"		<file type=\"Param\" default=\"1.txt\" abbreviation=\"f\"/>"
             "	</group>"
             "</mvFi>");
     }
