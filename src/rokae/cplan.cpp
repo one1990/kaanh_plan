@@ -165,7 +165,7 @@ struct MoveFileParam
 //static double POS[59815][72];
 //static double P1[59815];
 //vector <double> P1;
-vector<vector<double>  > POS(18);
+vector<vector<double>  > POS(24);
 /// \brief 类MoveFile申明
 /// 在类MoveFile中,完成对现有的.txt文件中的位置数据的提取，通过程序控制机器人的各关节按照数据位置变化来运动
 /// ### 类MoveFile
@@ -262,7 +262,7 @@ auto MoveFile::executeRT(PlanTarget &target)->int
     aris::Size total_count = 1;
     aris::Size return_value=0;
     static double begin_pos[6] = { 0.0,0.0,0.0,0.0,0.0,0.0 }; // 局部变量最好赋一个初始值;
-
+	
     if (target.count == 1)
     {
         //target.model->generalMotionPool()[0].getMpq(beginpq);
@@ -275,7 +275,7 @@ auto MoveFile::executeRT(PlanTarget &target)->int
             //begin_pos[i] = target.model->motionPool().at(i).mp();
         }
     }
-
+	//choose==0的情况下机器人本体复位
     if (p.choose == 0)
     {
         for (int i = 0; i < 6; i++)
@@ -286,13 +286,24 @@ auto MoveFile::executeRT(PlanTarget &target)->int
             //target.model->motionPool().at(5).setMv(v * 1000);
             controller->motionAtAbs(i).setTargetPos(ptt);
             total_count = std::max(total_count, t_count);
-
         }
         return_value = target.count>total_count ?0:1;
     }
-
-    if (p.choose == 1)
-    {
+	//choose==1的情况下机器人走到数据文件的第一个位置
+	else if (p.choose == 1)
+	{
+		for (int i = 0; i < 6; i++)
+		{
+			// 在第一个周期走梯形规划复位
+			aris::plan::moveAbsolute(target.count, begin_pos[i], POS[4 * i][0], p.vel / 1000, p.acc / 1000 / 1000, p.dec / 1000 / 1000, ptt, v, a, t_count);
+			controller->motionAtAbs(i).setTargetPos(ptt);
+			total_count = std::max(total_count, t_count);
+		}
+		return_value = target.count > total_count ? 0 : 1;
+	}
+	//choose==2的情况下机器人本体按照示教轨迹来走
+    else if (p.choose == 2)
+     {
         //target.master->mout() << POS[0][target.count] << std::endl;
         //target.model->motionPool().at(0).setMp(POS[0][target.count]);// motionpool驱动器的池子、数组
         //target.model->motionPool().at(1).setMp(POS[3][target.count]);
@@ -300,12 +311,25 @@ auto MoveFile::executeRT(PlanTarget &target)->int
         //target.model->motionPool().at(3).setMp(POS[9][target.count]);
         //target.model->motionPool().at(4).setMp(POS[12][target.count]);
         //target.model->motionPool().at(5).setMp(POS[15][target.count]);
-
-        for (int i = 0; i < 6; i++)
+		//if (begin_pos[0] != POS[0][0] || begin_pos[12] != POS[12][0] || begin_pos[24] != POS[24][0] || begin_pos[36] != POS[36][0] || begin_pos[48] != POS[48][0] || begin_pos[60] != POS[60][0])
+		//{
+		//	for (int i = 0; i < 6; i++)
+		//	{
+		//		// 在第一个周期走梯形规划复位
+		//		aris::plan::moveAbsolute(target.count, begin_pos[i], POS[12*i][0], p.vel / 1000, p.acc / 1000 / 1000, p.dec / 1000 / 1000, ptt, v, a, t_count);
+		//		//target.model->motionPool().at(i).setMp(ptt);// motionpool驱动器的池子、数组
+		//		//target.model->motionPool().at(5).setMv(v * 1000);
+		//		controller->motionAtAbs(i).setTargetPos(ptt);
+		//		total_count = std::max(total_count, t_count);
+		//	}
+		//}
+		//正式走示教的轨迹
+			for (int i = 0; i < 6; i++)
         {
-            controller->motionAtAbs(i).setTargetPos(POS[3*i][target.count]);
+            //controller->motionAtAbs(i).setTargetPos(POS[3*i][target.count]);//3个一组
+			controller->motionAtAbs(i).setTargetPos(POS[4 * i][target.count -1]);//问题，是从第二行开始走起
         }
-        return_value = target.count>POS[0].size()?0:1;
+        return_value = target.count>POS[0].size() + total_count ?0:1;
 
     }
 
@@ -362,7 +386,7 @@ MoveFile::MoveFile(const std::string &name) :Plan(name)
             "	<group type=\"GroupParam\" default_child_type=\"Param\">"
             "	    <total_time type=\"Param\" default=\"5000\"/>" // 默认5000
             "		<m type=\"Param\" default=\"59815\"/>"  // 行数
-            "		<n type=\"Param\" default=\"18\"/>"
+            "		<n type=\"Param\" default=\"24\"/>"
             "		<vel type=\"Param\" default=\"0.04\"/>"
             "		<acc type=\"Param\" default=\"0.08\"/>"
             "		<dec type=\"Param\" default=\"0.08\"/>"
