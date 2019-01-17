@@ -211,7 +211,8 @@ auto MoveFile::prepairNrt(const std::map<std::string, std::string> &params, Plan
 	
     //oplog.open("C:\\Users\\qianch_kaanh_cn\\Desktop\\myplan\\src\\rokae\\rt_log--2019-01-10--14-29-07--5--1.txt");
     //oplog.open("C:/Users/qianch_kaanh_cn/Desktop/myplan/src/rokae/1.txt");
-	string site = "C:/Users/qianch_kaanh_cn/Desktop/myplan/src/rokae/" + p.file;
+    //string site = "C:/Users/qianch_kaanh_cn/Desktop/myplan/src/rokae/" + p.file;
+    string site = "/home/kaanh/Desktop/myplan/src/rokae/" + p.file;
 	oplog.open(site);
 	//oplog.open(p.file);
 	if (!oplog)
@@ -327,9 +328,9 @@ auto MoveFile::executeRT(PlanTarget &target)->int
 			for (int i = 0; i < 6; i++)
         {
             //controller->motionAtAbs(i).setTargetPos(POS[3*i][target.count]);//3个一组
-			controller->motionAtAbs(i).setTargetPos(POS[4 * i][target.count -1]);//问题，是从第二行开始走起
+            controller->motionAtAbs(i).setTargetPos(POS[4 * i][target.count]);//问题，是从第二行开始走起
         }
-        return_value = target.count>POS[0].size() + total_count ?0:1;
+        return_value = target.count>POS[0].size()-2?0:1;
 
     }
 
@@ -338,7 +339,7 @@ auto MoveFile::executeRT(PlanTarget &target)->int
     auto &lout = controller->lout();
     for (int i = 0; i < 6;i++)
     {
-        lout << POS[3*i][target.count-1] << endl;
+        lout << POS[4*i][target.count-1] << endl;
     }
 
     //for (Size i = 0; i < 6; i++)
