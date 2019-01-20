@@ -152,7 +152,7 @@ struct MoveTParam
 struct MoveFileParam
 {
     int total_time;
-    int m, n;  // m,n代表txt文档中数据的行数和列数
+     
     double vel;
     double acc;
     double dec;// v0是梯形轨迹最终速度
@@ -165,7 +165,8 @@ struct MoveFileParam
 //static double POS[59815][72];
 //static double P1[59815];
 //vector <double> P1;
-vector<vector<double>  > POS(24);
+int n = 24; // n代表txt文档中数据的列数
+vector<vector<double>  > POS(n);
 /// \brief 类MoveFile申明
 /// 在类MoveFile中,完成对现有的.txt文件中的位置数据的提取，通过程序控制机器人的各关节按照数据位置变化来运动
 /// ### 类MoveFile
@@ -197,11 +198,11 @@ auto MoveFile::prepairNrt(const std::map<std::string, std::string> &params, Plan
     //std::cout<<std::endl;
 
     // 读取txt文件
-    p.m = std::stoi(params.at("m"));
-    p.n = std::stoi(params.at("n"));
+    //p.m = std::stoi(params.at("m"));
+    //p.n = std::stoi(params.at("n"));
     //std::fill_n(*POS, 59815 * 72, 0.0);
 
-    for (int j = 0; j < p.n; j++)
+    for (int j = 0; j < n; j++)
     {
         POS[j].clear();
     }
@@ -222,7 +223,7 @@ auto MoveFile::prepairNrt(const std::map<std::string, std::string> &params, Plan
 	}
     while (!oplog.eof())
     {
-        for (int j = 0; j < p.n; j++)
+        for (int j = 0; j < n; j++)
         {
             // oplog >> POS[i][j];
             double data;
@@ -234,7 +235,7 @@ auto MoveFile::prepairNrt(const std::map<std::string, std::string> &params, Plan
 
     oplog.close();
     oplog.clear();
-    for (int j = 0; j < p.n; j++)
+    for (int j = 0; j < n; j++)
     {
         POS[j].pop_back();
     }
@@ -296,7 +297,7 @@ auto MoveFile::executeRT(PlanTarget &target)->int
 		for (int i = 0; i < 6; i++)
 		{
 			// 在第一个周期走梯形规划复位
-			aris::plan::moveAbsolute(target.count, begin_pos[i], POS[4 * i][0], p.vel / 1000, p.acc / 1000 / 1000, p.dec / 1000 / 1000, ptt, v, a, t_count);
+			aris::plan::moveAbsolute(target.count, begin_pos[i], POS[n * i / 6][0], p.vel / 1000, p.acc / 1000 / 1000, p.dec / 1000 / 1000, ptt, v, a, t_count);
 			controller->motionAtAbs(i).setTargetPos(ptt);
 			total_count = std::max(total_count, t_count);
 		}
@@ -328,9 +329,9 @@ auto MoveFile::executeRT(PlanTarget &target)->int
 			for (int i = 0; i < 6; i++)
         {
             //controller->motionAtAbs(i).setTargetPos(POS[3*i][target.count]);//3个一组
-            controller->motionAtAbs(i).setTargetPos(POS[4 * i][target.count]);//问题，是从第二行开始走起
+            controller->motionAtAbs(i).setTargetPos(POS[n * i / 6][target.count]);//从列表的第二行开始走起，第一行在choose=1已经到达了
         }
-        return_value = target.count>POS[0].size()-2?0:1;
+        return_value = target.count>POS[0].size()-2?0:1;  //-2的原因在于a程序从文件数据第二行开始走b实时核程序判断结束是“先斩后奏”，所以要减一 
 
     }
 
@@ -339,7 +340,7 @@ auto MoveFile::executeRT(PlanTarget &target)->int
     auto &lout = controller->lout();
     for (int i = 0; i < 6;i++)
     {
-        lout << POS[4*i][target.count-1] << endl;
+        lout << POS[n*i/6][target.count-1] << endl;//第一列数字必须是位置
     }
 
     //for (Size i = 0; i < 6; i++)
@@ -386,8 +387,8 @@ MoveFile::MoveFile(const std::string &name) :Plan(name)
             "<mvFi>"
             "	<group type=\"GroupParam\" default_child_type=\"Param\">"
             "	    <total_time type=\"Param\" default=\"5000\"/>" // 默认5000
-            "		<m type=\"Param\" default=\"59815\"/>"  // 行数
-            "		<n type=\"Param\" default=\"24\"/>"
+           // "		<m type=\"Param\" default=\"59815\"/>"  // 行数
+            //"		<n type=\"Param\" default=\"24\"/>"
             "		<vel type=\"Param\" default=\"0.04\"/>"
             "		<acc type=\"Param\" default=\"0.08\"/>"
             "		<dec type=\"Param\" default=\"0.08\"/>"
